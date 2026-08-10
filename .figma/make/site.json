@@ -1,0 +1,10 @@
+{
+  "description": "Streamline prescription verification with AI-powered analysis, ensuring safer healthcare for patients and professionals through efficient uploads and risk assessments.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
