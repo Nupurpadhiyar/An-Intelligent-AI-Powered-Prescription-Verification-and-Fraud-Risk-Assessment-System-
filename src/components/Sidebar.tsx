@@ -8,8 +8,9 @@ interface Props {
 const items = [
   { page: 'upload' as Page, label: 'Upload Prescription', icon: '⬆' },
   { page: 'dashboard' as Page, label: 'Dashboard', icon: '◈' },
-  { page: 'reports' as Page, label: 'Reports', icon: '📋' },
+  { page: 'reports' as Page, label: 'Audit Reports & Stats', icon: '📋' },
   { page: 'medicine' as Page, label: 'Medicine Database', icon: '💊' },
+  { page: 'admin' as Page, label: 'Admin Portal', icon: '🔒' },
   { page: 'settings' as Page, label: 'Settings', icon: '⚙' },
 ]
 

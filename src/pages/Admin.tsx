@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { Page } from '../App'
+import { usePrescriptions } from '../context/PrescriptionContext'
+import AnalyticsCharts from '../components/AnalyticsCharts'
 
 interface Props {
   navigate: (p: Page) => void
@@ -7,7 +9,7 @@ interface Props {
   setDarkMode: (v: boolean) => void
 }
 
-type AdminTab = 'overview' | 'users' | 'medicines' | 'logs'
+type AdminTab = 'overview' | 'analytics' | 'users' | 'medicines' | 'logs'
 
 interface User {
   id: string
@@ -18,38 +20,54 @@ interface User {
   status: 'active' | 'inactive'
 }
 
-const users: User[] = [
-  { id: 'U-001', name: 'Dr. Sarah Chen', role: 'Pharmacist', email: 's.chen@northridge.med', lastActive: '2026-07-28', status: 'active' },
-  { id: 'U-002', name: 'Marcus Thompson', role: 'Technician', email: 'm.thompson@northridge.med', lastActive: '2026-07-28', status: 'active' },
-  { id: 'U-003', name: 'Priya Patel', role: 'Doctor', email: 'p.patel@suncoast.med', lastActive: '2026-07-26', status: 'active' },
-  { id: 'U-004', name: 'James Liu', role: 'Admin', email: 'j.liu@rxshield.ai', lastActive: '2026-07-28', status: 'active' },
-  { id: 'U-005', name: 'Elena Vasquez', role: 'Pharmacist', email: 'e.vasquez@mediplus.med', lastActive: '2026-07-20', status: 'inactive' },
+const initialUsers: User[] = [
+  { id: 'U-001', name: 'Dr. Sarah Chen', role: 'Pharmacist', email: 's.chen@northridge.med', lastActive: '2026-08-16', status: 'active' },
+  { id: 'U-002', name: 'Marcus Thompson', role: 'Compliance Lead', email: 'm.thompson@rxshield.ai', lastActive: '2026-08-16', status: 'active' },
+  { id: 'U-003', name: 'Dr. Priya Patel', role: 'Physician', email: 'p.patel@suncoast.med', lastActive: '2026-08-15', status: 'active' },
+  { id: 'U-004', name: 'James Liu', role: 'Admin', email: 'j.liu@rxshield.ai', lastActive: '2026-08-16', status: 'active' },
+  { id: 'U-005', name: 'Elena Vasquez', role: 'Pharmacist', email: 'e.vasquez@mediplus.med', lastActive: '2026-08-10', status: 'inactive' },
 ]
 
-const logs = [
-  { time: '14:32:01', user: 'Dr. Sarah Chen', action: 'Uploaded prescription RX-10291', type: 'upload' },
-  { time: '14:29:44', user: 'System AI', action: 'Flagged RX-10289 as SUSPICIOUS — controlled substance', type: 'alert' },
-  { time: '14:15:12', user: 'Marcus Thompson', action: 'Viewed report for RX-10290', type: 'view' },
-  { time: '13:58:30', user: 'James Liu', action: 'Added user: Nina Flores (Pharmacist)', type: 'admin' },
-  { time: '13:41:09', user: 'Priya Patel', action: 'Uploaded prescription RX-10288', type: 'upload' },
-  { time: '13:22:55', user: 'System AI', action: 'Auto-flagged Alprazolam 4mg — exceeds safe dosage threshold', type: 'alert' },
-  { time: '12:50:11', user: 'Dr. Sarah Chen', action: 'Downloaded PDF report — RX-10287', type: 'download' },
-  { time: '11:30:00', user: 'James Liu', action: 'Updated medicine watchlist — added Carisoprodol', type: 'admin' },
+const adminTabs = [
+  { id: 'overview', label: 'Overview', icon: '⚡' },
+  { id: 'analytics', label: 'Analytics', icon: '📊' },
+  { id: 'users', label: 'User Roles', icon: '👥' },
+  { id: 'medicines', label: 'Watchlist', icon: '💊' },
+  { id: 'logs', label: 'Audit Logs', icon: '📜' },
 ]
 
-const logColors = {
+const logColors: Record<string, string> = {
   upload: '#00d4ff',
   alert: '#ff4444',
   view: '#6b8fad',
   admin: '#a855f7',
   download: '#00ff88',
+  dispense: '#00ff88',
+  reject: '#ff4444',
+  flag: '#ffb800',
+}
+
+const inputStyle = {
+  width: '100%',
+  padding: '10px 14px',
+  borderRadius: 8,
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(0,212,255,0.2)',
+  color: '#e8f4fd',
+  fontSize: 14,
+  outline: 'none',
 }
 
 export default function Admin({ navigate }: Props) {
+  const { systemLogs, auditHistory, resetToDefaultData } = usePrescriptions()
   const [authed, setAuthed] = useState(false)
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
   const [loginError, setLoginError] = useState(false)
   const [tab, setTab] = useState<AdminTab>('overview')
+  const [users, setUsers] = useState<User[]>(initialUsers)
+  const [showAddUser, setShowAddUser] = useState(false)
+  const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Pharmacist' })
+  const [resetSuccess, setResetSuccess] = useState(false)
 
   const login = (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,6 +76,29 @@ export default function Admin({ navigate }: Props) {
     } else {
       setLoginError(true)
       setTimeout(() => setLoginError(false), 2500)
+    }
+  }
+
+  const handleAddUser = () => {
+    if (!newUser.name || !newUser.email) return
+    const created: User = {
+      id: `U-00${users.length + 1}`,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      lastActive: new Date().toISOString().split('T')[0],
+      status: 'active',
+    }
+    setUsers([...users, created])
+    setShowAddUser(false)
+    setNewUser({ name: '', email: '', role: 'Pharmacist' })
+  }
+
+  const handleResetData = () => {
+    if (confirm('Are you sure you want to restore default prescription test fixtures?')) {
+      resetToDefaultData()
+      setResetSuccess(true)
+      setTimeout(() => setResetSuccess(false), 3000)
     }
   }
 
@@ -74,21 +115,6 @@ export default function Admin({ navigate }: Props) {
           overflow: 'hidden',
         }}
       >
-        <div className="bg-grid" style={{ position: 'absolute', inset: 0, opacity: 0.5 }} />
-        <div
-          style={{
-            position: 'absolute',
-            top: '30%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: 600,
-            height: 600,
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(0,212,255,0.06) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }}
-        />
-
         <form
           onSubmit={login}
           style={{
@@ -100,11 +126,11 @@ export default function Admin({ navigate }: Props) {
           }}
         >
           {/* Logo */}
-          <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div
               style={{
-                width: 72,
-                height: 72,
+                width: 68,
+                height: 68,
                 borderRadius: '50%',
                 background: 'rgba(0,212,255,0.1)',
                 border: '2px solid rgba(0,212,255,0.3)',
@@ -112,24 +138,23 @@ export default function Admin({ navigate }: Props) {
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 16px',
-                fontSize: 32,
+                fontSize: 30,
               }}
-              className="animate-glow-pulse"
             >
               🔒
             </div>
-            <h1 className="font-display" style={{ fontSize: 28, fontWeight: 800, color: '#e8f4fd', marginBottom: 6 }}>
-              Admin Portal
+            <h1 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd', marginBottom: 6 }}>
+              RxShield Admin Portal
             </h1>
-            <p style={{ fontSize: 14, color: '#6b8fad' }}>Authorized personnel only</p>
-            <p style={{ fontSize: 12, color: '#2a4a6b', marginTop: 8 }}>
-              Demo: admin@rxshield.ai / admin123
+            <p style={{ fontSize: 13, color: '#6b8fad' }}>Authorized compliance & security personnel only</p>
+            <p style={{ fontSize: 12, color: '#00d4ff', marginTop: 8 }}>
+              Demo Login: <strong>admin@rxshield.ai</strong> / <strong>admin123</strong>
             </p>
           </div>
 
           <div
             className="glass"
-            style={{ borderRadius: 18, padding: '28px', display: 'flex', flexDirection: 'column', gap: 16 }}
+            style={{ borderRadius: 18, padding: 28, display: 'flex', flexDirection: 'column', gap: 16, background: '#071428' }}
           >
             {loginError && (
               <div
@@ -142,7 +167,7 @@ export default function Admin({ navigate }: Props) {
                   fontSize: 13,
                 }}
               >
-                Invalid credentials. Please try again.
+                Invalid credentials. Use admin@rxshield.ai / admin123
               </div>
             )}
             <div>
@@ -170,19 +195,19 @@ export default function Admin({ navigate }: Props) {
             <button
               type="submit"
               className="btn-primary"
-              style={{ padding: '13px', borderRadius: 10, fontSize: 15 }}
+              style={{ padding: '12px', borderRadius: 10, fontSize: 14, fontWeight: 700 }}
             >
               Sign In to Admin Portal
             </button>
           </div>
 
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
+          <div style={{ textAlign: 'center', marginTop: 18 }}>
             <button
               type="button"
               onClick={() => navigate('landing')}
               style={{ background: 'none', border: 'none', color: '#6b8fad', cursor: 'pointer', fontSize: 13 }}
             >
-              ← Back to main site
+              ← Back to main application
             </button>
           </div>
         </form>
@@ -190,10 +215,9 @@ export default function Admin({ navigate }: Props) {
     )
   }
 
-  // Admin dashboard
   return (
     <div style={{ minHeight: '100vh', background: '#040d1a', display: 'flex', flexDirection: 'column' }}>
-      {/* Admin navbar */}
+      {/* Admin Navbar */}
       <nav
         className="glass"
         style={{
@@ -206,6 +230,7 @@ export default function Admin({ navigate }: Props) {
           position: 'sticky',
           top: 0,
           zIndex: 50,
+          background: '#071428',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -223,12 +248,33 @@ export default function Admin({ navigate }: Props) {
                 fontWeight: 700,
               }}
             >
-              ADMIN
+              ADMINISTRATION
             </span>
           </span>
+          <button
+            onClick={() => navigate('dashboard')}
+            style={{ background: 'none', border: 'none', color: '#6b8fad', cursor: 'pointer', fontSize: 13 }}
+          >
+            ← View App
+          </button>
         </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ fontSize: 13, color: '#6b8fad' }}>James Liu · Admin</span>
+          <button
+            onClick={handleResetData}
+            style={{
+              background: 'rgba(0,212,255,0.08)',
+              border: '1px solid rgba(0,212,255,0.3)',
+              color: '#00d4ff',
+              borderRadius: 6,
+              padding: '5px 12px',
+              fontSize: 12,
+              cursor: 'pointer',
+            }}
+          >
+            Reset Fixtures
+          </button>
+          <span style={{ fontSize: 13, color: '#e8f4fd' }}>James Liu · System Administrator</span>
           <button
             onClick={() => setAuthed(false)}
             style={{
@@ -246,11 +292,17 @@ export default function Admin({ navigate }: Props) {
         </div>
       </nav>
 
+      {resetSuccess && (
+        <div style={{ background: '#00ff8820', borderBottom: '1px solid #00ff88', padding: '8px 24px', color: '#00ff88', fontSize: 13, textAlign: 'center' }}>
+          ✓ Test data fixtures restored successfully!
+        </div>
+      )}
+
       <div style={{ display: 'flex', flex: 1 }}>
         {/* Sidebar tabs */}
         <aside
           style={{
-            width: 200,
+            width: 220,
             borderRight: '1px solid rgba(0,212,255,0.1)',
             padding: '24px 0',
             background: '#071428',
@@ -283,258 +335,230 @@ export default function Admin({ navigate }: Props) {
           ))}
         </aside>
 
-        {/* Main content */}
+        {/* Main Admin Tab Views */}
         <main style={{ flex: 1, padding: '36px', overflowY: 'auto' }}>
-          {tab === 'overview' && <OverviewTab />}
-          {tab === 'users' && <UsersTab />}
-          {tab === 'medicines' && <MedicinesTab />}
-          {tab === 'logs' && <LogsTab />}
+          {tab === 'overview' && (
+            <div>
+              <h2 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd', marginBottom: 24 }}>
+                Executive System Overview
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
+                <div className="glass" style={{ padding: 20, borderRadius: 14 }}>
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>📑</div>
+                  <div className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#00d4ff' }}>{auditHistory.length}</div>
+                  <div style={{ fontSize: 12, color: '#6b8fad', marginTop: 4 }}>Prescriptions Audited</div>
+                </div>
+                <div className="glass" style={{ padding: 20, borderRadius: 14 }}>
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>🚨</div>
+                  <div className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#ff4444' }}>
+                    {auditHistory.filter((a) => a.risk === 'suspicious').length}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6b8fad', marginTop: 4 }}>High-Risk Intercepts</div>
+                </div>
+                <div className="glass" style={{ padding: 20, borderRadius: 14 }}>
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>👥</div>
+                  <div className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#a855f7' }}>{users.length}</div>
+                  <div style={{ fontSize: 12, color: '#6b8fad', marginTop: 4 }}>Active Staff Users</div>
+                </div>
+                <div className="glass" style={{ padding: 20, borderRadius: 14 }}>
+                  <div style={{ fontSize: 26, marginBottom: 6 }}>⚡</div>
+                  <div className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#00ff88' }}>99.98%</div>
+                  <div style={{ fontSize: 12, color: '#6b8fad', marginTop: 4 }}>System Uptime</div>
+                </div>
+              </div>
+
+              {/* Real-Time System Event Feed */}
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#e8f4fd', marginBottom: 14 }}>
+                Real-Time Security & Dispensing Event Stream
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {systemLogs.slice(0, 8).map((l) => (
+                  <div
+                    key={l.id}
+                    className="glass"
+                    style={{
+                      borderRadius: 10,
+                      padding: '12px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderLeft: `4px solid ${logColors[l.type] || '#00d4ff'}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <span style={{ color: logColors[l.type] || '#00d4ff', fontSize: 16 }}>●</span>
+                      <div>
+                        <div style={{ fontSize: 13, color: '#e8f4fd', fontWeight: 600 }}>{l.action}</div>
+                        <div style={{ fontSize: 11, color: '#6b8fad' }}>{l.user} ({l.role})</div>
+                      </div>
+                    </div>
+                    <span style={{ fontSize: 11, color: '#6b8fad', fontFamily: 'monospace' }}>{l.timestamp}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'analytics' && (
+            <div>
+              <h2 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd', marginBottom: 20 }}>
+                Enterprise Fraud & Dispensing Analytics
+              </h2>
+              <AnalyticsCharts reports={auditHistory} />
+            </div>
+          )}
+
+          {tab === 'users' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h2 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd' }}>
+                  Role-Based User Permissions
+                </h2>
+                <button
+                  onClick={() => setShowAddUser(true)}
+                  className="btn-primary"
+                  style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13 }}
+                >
+                  + Add User
+                </button>
+              </div>
+
+              {showAddUser && (
+                <div className="glass" style={{ padding: 20, borderRadius: 12, marginBottom: 20, background: '#071428' }}>
+                  <h4 style={{ color: '#e8f4fd', margin: '0 0 12px 0' }}>Add Authorized User</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+                    <input
+                      placeholder="Full Name"
+                      value={newUser.name}
+                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                      style={inputStyle}
+                    />
+                    <input
+                      placeholder="Email Address"
+                      value={newUser.email}
+                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      style={inputStyle}
+                    />
+                    <select
+                      value={newUser.role}
+                      onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                      style={inputStyle}
+                    >
+                      <option value="Pharmacist" style={{ background: '#071428' }}>Pharmacist</option>
+                      <option value="Compliance Lead" style={{ background: '#071428' }}>Compliance Lead</option>
+                      <option value="Physician" style={{ background: '#071428' }}>Physician</option>
+                      <option value="Admin" style={{ background: '#071428' }}>Admin</option>
+                    </select>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button onClick={handleAddUser} className="btn-primary" style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12 }}>Save</button>
+                    <button onClick={() => setShowAddUser(false)} className="btn-outline" style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12 }}>Cancel</button>
+                  </div>
+                </div>
+              )}
+
+              <div className="glass" style={{ borderRadius: 14, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(0,212,255,0.15)', color: '#6b8fad', background: 'rgba(0,212,255,0.05)' }}>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>User</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Role</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Email</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Last Active</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((u) => (
+                      <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#e8f4fd' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: 600 }}>{u.name}</td>
+                        <td style={{ padding: '12px 16px', color: '#00d4ff' }}>{u.role}</td>
+                        <td style={{ padding: '12px 16px', color: '#8bb0ce' }}>{u.email}</td>
+                        <td style={{ padding: '12px 16px', color: '#6b8fad' }}>{u.lastActive}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ color: u.status === 'active' ? '#00ff88' : '#6b8fad', fontSize: 12, fontWeight: 700 }}>
+                            {u.status.toUpperCase()}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {tab === 'medicines' && (
+            <div>
+              <h2 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd', marginBottom: 12 }}>
+                Controlled Substance Watchlist & Risk Thresholds
+              </h2>
+              <p style={{ color: '#6b8fad', fontSize: 14, marginBottom: 20 }}>
+                Automated red-flags triggered for DEA Schedule II narcotics, rapid fill repeat requests, and maximum clinical single doses.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                {[
+                  { name: 'Oxycodone', schedule: 'Schedule II', maxDose: '60mg/day', risk: 'Opioid Risk' },
+                  { name: 'Alprazolam', schedule: 'Schedule IV', maxDose: '4mg/day', risk: 'Sedative Dependence' },
+                  { name: 'Hydrocodone', schedule: 'Schedule II', maxDose: '40mg/day', risk: 'Respiratory Depression' },
+                  { name: 'Carisoprodol', schedule: 'Schedule IV', maxDose: '1400mg/day', risk: 'Muscle Relaxant Potentiation' },
+                ].map((item, idx) => (
+                  <div key={idx} className="glass" style={{ padding: 18, borderRadius: 12, border: '1px solid rgba(255,68,68,0.2)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h4 style={{ color: '#e8f4fd', margin: 0, fontSize: 16 }}>{item.name}</h4>
+                      <span style={{ background: '#ff444420', color: '#ff4444', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 700 }}>
+                        {item.schedule}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 13, color: '#8bb0ce', marginTop: 8 }}>
+                      Max Threshold: <strong style={{ color: '#e8f4fd' }}>{item.maxDose}</strong>
+                    </div>
+                    <div style={{ fontSize: 12, color: '#ffb800', marginTop: 4 }}>
+                      Flag: {item.risk}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tab === 'logs' && (
+            <div>
+              <h2 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd', marginBottom: 20 }}>
+                Immutable System Audit Log
+              </h2>
+              <div className="glass" style={{ borderRadius: 14, overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid rgba(0,212,255,0.15)', color: '#6b8fad', background: 'rgba(0,212,255,0.05)' }}>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Time</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Actor & Role</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Action Performed</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Rx Reference</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'left' }}>Event Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {systemLogs.map((l) => (
+                      <tr key={l.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#e8f4fd' }}>
+                        <td style={{ padding: '12px 16px', fontFamily: 'monospace', color: '#6b8fad' }}>{l.timestamp}</td>
+                        <td style={{ padding: '12px 16px', fontWeight: 600 }}>{l.user} ({l.role})</td>
+                        <td style={{ padding: '12px 16px' }}>{l.action}</td>
+                        <td style={{ padding: '12px 16px', color: '#00d4ff', fontFamily: 'monospace' }}>{l.rxId || '—'}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{ color: logColors[l.type] || '#00d4ff', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+                            {l.type}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>
   )
-}
-
-function OverviewTab() {
-  return (
-    <div>
-      <h2 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd', marginBottom: 24, letterSpacing: '-0.02em' }}>
-        System Overview
-      </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
-        {overviewStats.map((s) => (
-          <div key={s.label} className="glass card-hover" style={{ borderRadius: 14, padding: '20px' }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>{s.icon}</div>
-            <div className="font-display" style={{ fontSize: 28, fontWeight: 800, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: '#6b8fad', marginTop: 4 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Recent alerts */}
-      <h3 className="font-display" style={{ fontSize: 18, fontWeight: 700, color: '#e8f4fd', marginBottom: 16 }}>
-        Recent Alerts
-      </h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {logs.filter((l) => l.type === 'alert').map((l, i) => (
-          <div key={i} className="glass" style={{ borderRadius: 12, padding: '14px 18px', borderColor: 'rgba(255,68,68,0.2)', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ color: '#ff4444', fontSize: 18 }}>🚨</span>
-            <div>
-              <div style={{ fontSize: 14, color: '#e8f4fd' }}>{l.action}</div>
-              <div className="font-mono" style={{ fontSize: 11, color: '#6b8fad', marginTop: 3 }}>{l.time} · {l.user}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function UsersTab() {
-  const [showAdd, setShowAdd] = useState(false)
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd', letterSpacing: '-0.02em' }}>
-          Manage Users
-        </h2>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="btn-primary"
-          style={{ padding: '9px 20px', borderRadius: 9, fontSize: 13 }}
-        >
-          + Add User
-        </button>
-      </div>
-
-      {showAdd && (
-        <div className="glass" style={{ borderRadius: 14, padding: '20px 24px', marginBottom: 20, borderColor: 'rgba(0,212,255,0.2)' }}>
-          <h3 className="font-display" style={{ fontSize: 16, fontWeight: 700, color: '#e8f4fd', marginBottom: 16 }}>New User</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-            {['Full Name', 'Email', 'Role'].map((f) => (
-              <input key={f} placeholder={f} style={{ ...inputStyle, fontSize: 13 }} />
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-            <button className="btn-primary" style={{ padding: '8px 20px', borderRadius: 8, fontSize: 13 }} onClick={() => setShowAdd(false)}>
-              Create User
-            </button>
-            <button className="btn-outline" style={{ padding: '8px 20px', borderRadius: 8, fontSize: 13 }} onClick={() => setShowAdd(false)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-
-      <div className="glass" style={{ borderRadius: 14, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid rgba(0,212,255,0.1)' }}>
-              {['User', 'Role', 'Email', 'Last Active', 'Status', ''].map((h) => (
-                <th key={h} style={{ padding: '13px 16px', textAlign: 'left', fontSize: 11, color: '#6b8fad', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }} className="font-mono">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((u, i) => (
-              <tr key={u.id} style={{ borderBottom: i < users.length - 1 ? '1px solid rgba(0,212,255,0.06)' : 'none' }}>
-                <td style={{ padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, #00d4ff, #00ff88)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: '#040d1a', flexShrink: 0 }} className="font-display">
-                      {u.name.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                    </div>
-                    <span style={{ fontSize: 14, color: '#e8f4fd', fontWeight: 500 }}>{u.name}</span>
-                  </div>
-                </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <span style={{ fontSize: 13, color: '#a8c8e8' }}>{u.role}</span>
-                </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <span className="font-mono" style={{ fontSize: 12, color: '#6b8fad' }}>{u.email}</span>
-                </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <span className="font-mono" style={{ fontSize: 12, color: '#6b8fad' }}>{u.lastActive}</span>
-                </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <span style={{
-                    padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                    background: u.status === 'active' ? 'rgba(0,255,136,0.1)' : 'rgba(107,143,173,0.1)',
-                    color: u.status === 'active' ? '#00ff88' : '#6b8fad',
-                    border: `1px solid ${u.status === 'active' ? 'rgba(0,255,136,0.25)' : 'rgba(107,143,173,0.2)'}`,
-                  }}>
-                    {u.status}
-                  </span>
-                </td>
-                <td style={{ padding: '14px 16px' }}>
-                  <button style={{ background: 'rgba(255,68,68,0.08)', border: '1px solid rgba(255,68,68,0.2)', color: '#ff4444', borderRadius: 6, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
-function MedicinesTab() {
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd', letterSpacing: '-0.02em' }}>
-          Medicine Database Admin
-        </h2>
-        <button className="btn-primary" style={{ padding: '9px 20px', borderRadius: 9, fontSize: 13 }}>
-          + Add Medicine
-        </button>
-      </div>
-      <div className="glass" style={{ borderRadius: 14, padding: '20px 24px', marginBottom: 16 }}>
-        <h3 className="font-display" style={{ fontSize: 16, fontWeight: 700, color: '#e8f4fd', marginBottom: 12 }}>Prescription-Only Watchlist</h3>
-        <textarea
-          defaultValue="Oxycodone, Hydrocodone, Alprazolam, Adderall, Fentanyl, Carisoprodol, Tramadol, Zolpidem, Diazepam"
-          rows={4}
-          style={{ ...inputStyle, width: '100%', resize: 'vertical' }}
-        />
-        <button className="btn-primary" style={{ marginTop: 12, padding: '8px 20px', borderRadius: 8, fontSize: 13 }}>
-          Save Watchlist
-        </button>
-      </div>
-      <div
-        style={{
-          padding: '16px 20px',
-          borderRadius: 12,
-          background: 'rgba(255,184,0,0.06)',
-          border: '1px solid rgba(255,184,0,0.2)',
-        }}
-      >
-        <span style={{ fontSize: 13, color: '#ffb800' }}>
-          ⚠ Database last synced: 2026-07-28 03:00 UTC · Next sync in 18 hours
-        </span>
-      </div>
-    </div>
-  )
-}
-
-function LogsTab() {
-  return (
-    <div>
-      <h2 className="font-display" style={{ fontSize: 26, fontWeight: 800, color: '#e8f4fd', marginBottom: 24, letterSpacing: '-0.02em' }}>
-        User Activity Logs
-      </h2>
-      <div className="glass" style={{ borderRadius: 14, overflow: 'hidden' }}>
-        {logs.map((l, i) => (
-          <div
-            key={i}
-            style={{
-              padding: '14px 20px',
-              borderBottom: i < logs.length - 1 ? '1px solid rgba(0,212,255,0.06)' : 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-            }}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                background: (logColors as Record<string, string>)[l.type] || '#6b8fad',
-                flexShrink: 0,
-                boxShadow: `0 0 6px ${(logColors as Record<string, string>)[l.type] || '#6b8fad'}60`,
-              }}
-            />
-            <span className="font-mono" style={{ fontSize: 12, color: '#6b8fad', minWidth: 70 }}>{l.time}</span>
-            <span style={{ fontSize: 13, color: '#6b8fad', minWidth: 140 }}>{l.user}</span>
-            <span style={{ fontSize: 14, color: '#a8c8e8', flex: 1 }}>{l.action}</span>
-            <span
-              style={{
-                fontSize: 11,
-                padding: '2px 8px',
-                borderRadius: 4,
-                background: `${(logColors as Record<string, string>)[l.type]}18`,
-                color: (logColors as Record<string, string>)[l.type] || '#6b8fad',
-                border: `1px solid ${(logColors as Record<string, string>)[l.type]}30`,
-                textTransform: 'uppercase',
-                fontWeight: 600,
-                letterSpacing: '0.06em',
-              }}
-              className="font-mono"
-            >
-              {l.type}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-const adminTabs = [
-  { id: 'overview', icon: '◈', label: 'Overview' },
-  { id: 'users', icon: '👥', label: 'Users' },
-  { id: 'medicines', icon: '💊', label: 'Medicines' },
-  { id: 'logs', icon: '📋', label: 'Audit Logs' },
-]
-
-const overviewStats = [
-  { icon: '📤', value: '2,847', label: 'Total Uploads', color: '#00d4ff' },
-  { icon: '🚨', value: '6.7%', label: 'Flagged Suspicious', color: '#ff4444' },
-  { icon: '⚠️', value: '11.0%', label: 'Incomplete', color: '#ffb800' },
-  { icon: '✅', value: '82.3%', label: 'Valid', color: '#00ff88' },
-  { icon: '👤', value: users.filter((u) => u.status === 'active').length.toString(), label: 'Active Users', color: '#a855f7' },
-]
-
-const inputStyle: React.CSSProperties = {
-  padding: '10px 14px',
-  borderRadius: 9,
-  background: 'rgba(0,212,255,0.05)',
-  border: '1px solid rgba(0,212,255,0.15)',
-  color: '#e8f4fd',
-  fontSize: 14,
-  outline: 'none',
-  width: '100%',
 }

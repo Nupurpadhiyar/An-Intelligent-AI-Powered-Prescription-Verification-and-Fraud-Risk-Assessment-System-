@@ -10,6 +10,7 @@ import Help from './pages/Help'
 import Contact from './pages/Contact'
 import Admin from './pages/Admin'
 import Auth from './pages/Auth'
+import { PrescriptionProvider } from './context/PrescriptionContext'
 
 export type Page =
   | 'landing'
@@ -37,19 +38,21 @@ export default function App() {
   const props = { navigate, darkMode, setDarkMode }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#040d1a' }}>
-      {page === 'landing' && <Landing {...props} />}
-      {page === 'upload' && <Upload {...props} />}
-      {page === 'dashboard' && <Dashboard {...props} />}
-      {page === 'reports' && <Reports {...props} />}
-      {page === 'medicine' && <MedicineDB {...props} />}
-      {page === 'settings' && <Settings {...props} />}
-      {page === 'about' && <About {...props} />}
-      {page === 'help' && <Help {...props} />}
-      {page === 'contact' && <Contact {...props} />}
-      {page === 'admin' && <Admin {...props} />}
-      {page === 'login' && <Auth navigate={navigate} mode="login" />}
-      {page === 'register' && <Auth navigate={navigate} mode="register" />}
-    </div>
+    <PrescriptionProvider>
+      <div style={{ minHeight: '100vh', background: '#040d1a' }}>
+        {page === 'landing' && <Landing {...props} />}
+        {page === 'upload' && <Upload {...props} />}
+        {page === 'dashboard' && <Dashboard {...props} />}
+        {page === 'reports' && <Reports {...props} />}
+        {page === 'medicine' && <MedicineDB {...props} />}
+        {page === 'settings' && <Settings {...props} />}
+        {page === 'about' && <About {...props} />}
+        {page === 'help' && <Help {...props} />}
+        {page === 'contact' && <Contact {...props} />}
+        {page === 'admin' && <Admin {...props} />}
+        {page === 'login' && <Auth navigate={navigate} mode="login" />}
+        {page === 'register' && <Auth navigate={navigate} mode="register" />}
+      </div>
+    </PrescriptionProvider>
   )
 }

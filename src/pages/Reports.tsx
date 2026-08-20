@@ -1,7 +1,12 @@
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
+import AnalyticsCharts from '../components/AnalyticsCharts'
+import AuditCertificateModal from '../components/AuditCertificateModal'
+import { usePrescriptions } from '../context/PrescriptionContext'
+import { samplePrescriptions } from '../data/samplePrescriptions'
 import type { Page } from '../App'
+import type { RiskLevel, AuditReportSummary, PrescriptionData } from '../types/prescription'
 
 interface Props {
   navigate: (p: Page) => void
@@ -9,43 +14,15 @@ interface Props {
   setDarkMode: (v: boolean) => void
 }
 
-type Risk = 'valid' | 'incomplete' | 'suspicious'
-
-interface Report {
-  id: string
-  date: string
-  doctor: string
-  patient: string
-  medicines: string
-  risk: Risk
-  confidence: number
-}
-
-const allReports: Report[] = [
-  { id: 'RX-10291', date: '2026-07-28', doctor: 'Dr. Sarah Chen', patient: 'Marcus Thompson', medicines: 'Amoxicillin, Ibuprofen, Prednisone', risk: 'valid', confidence: 97.4 },
-  { id: 'RX-10290', date: '2026-07-28', doctor: 'Dr. Priya Patel', patient: 'Elena Vasquez', medicines: 'Metformin, Lisinopril', risk: 'incomplete', confidence: 61.8 },
-  { id: 'RX-10289', date: '2026-07-27', doctor: 'Dr. J. Morrison', patient: 'Unknown', medicines: 'Oxycodone 80mg', risk: 'suspicious', confidence: 23.1 },
-  { id: 'RX-10288', date: '2026-07-27', doctor: 'Dr. James Liu', patient: 'Aisha Okonkwo', medicines: 'Atorvastatin, Metoprolol', risk: 'valid', confidence: 94.2 },
-  { id: 'RX-10287', date: '2026-07-26', doctor: 'Dr. Angela Ross', patient: 'David Park', medicines: 'Sertraline 50mg', risk: 'valid', confidence: 91.7 },
-  { id: 'RX-10286', date: '2026-07-26', doctor: 'Dr. R. Kapoor', patient: 'Sofia Mendez', medicines: 'Alprazolam 2mg', risk: 'suspicious', confidence: 31.5 },
-  { id: 'RX-10285', date: '2026-07-25', doctor: 'Dr. Marcus Webb', patient: 'Hiroshi Tanaka', medicines: 'Levothyroxine', risk: 'valid', confidence: 99.1 },
-  { id: 'RX-10284', date: '2026-07-25', doctor: 'Dr. Nina Flores', patient: 'Karen O\'Brien', medicines: 'Hydrocodone', risk: 'incomplete', confidence: 54.3 },
-  { id: 'RX-10283', date: '2026-07-24', doctor: 'Dr. Tyler Grant', patient: 'Antoine Dubois', medicines: 'Omeprazole, Pantoprazole', risk: 'valid', confidence: 96.0 },
-  { id: 'RX-10282', date: '2026-07-24', doctor: 'Dr. Sarah Chen', patient: 'Yuki Watanabe', medicines: 'Amoxicillin, Prednisone', risk: 'valid', confidence: 98.3 },
-]
-
-const riskCfg = {
-  valid: { label: 'Valid', color: '#00ff88', bg: 'rgba(0,255,136,0.1)', border: 'rgba(0,255,136,0.25)' },
-  incomplete: { label: 'Incomplete', color: '#ffb800', bg: 'rgba(255,184,0,0.1)', border: 'rgba(255,184,0,0.25)' },
-  suspicious: { label: 'Suspicious', color: '#ff4444', bg: 'rgba(255,68,68,0.1)', border: 'rgba(255,68,68,0.25)' },
-}
-
 export default function Reports({ navigate }: Props) {
+  const { auditHistory, deleteReport, setActiveRx } = usePrescriptions()
   const [search, setSearch] = useState('')
-  const [filterRisk, setFilterRisk] = useState<Risk | 'all'>('all')
-  const [sortCol, setSortCol] = useState<'date' | 'confidence'>('date')
+  const [filterRisk, setFilterRisk] = useState<RiskLevel | 'all'>('all')
+  const [sortCol, setSortCol] = useState<'date' | 'confidence' | 'riskScore'>('date')
+  const [showCharts, setShowCharts] = useState(true)
+  const [selectedRxForCert, setSelectedRxForCert] = useState<PrescriptionData | null>(null)
 
-  const filtered = allReports
+  const filtered = auditHistory
     .filter((r) => {
       const q = search.toLowerCase()
       return (
@@ -56,7 +33,67 @@ export default function Reports({ navigate }: Props) {
           r.medicines.toLowerCase().includes(q))
       )
     })
-    .sort((a, b) => sortCol === 'date' ? b.date.localeCompare(a.date) : b.confidence - a.confidence)
+    .sort((a, b) => {
+      if (sortCol === 'date') return b.date.localeCompare(a.date)
+      if (sortCol === 'confidence') return b.confidence - a.confidence
+      return b.riskScore - a.riskScore
+    })
+
+  const exportCSV = () => {
+    const headers = ['ID', 'Date', 'Doctor', 'Patient', 'Medicines', 'Risk Status', 'AI Confidence', 'Safety Score', 'Status']
+    const rows = filtered.map((r) => [
+      r.id,
+      r.date,
+      `"${r.doctor}"`,
+      `"${r.patient}"`,
+      `"${r.medicines}"`,
+      r.risk.toUpperCase(),
+      `${r.confidence}%`,
+      `${r.riskScore}/100`,
+      r.status,
+    ])
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((e) => e.join(','))].join('\n')
+    const encodedUri = encodeURI(csvContent)
+    const link = document.createElement('a')
+    link.setAttribute('href', encodedUri)
+    link.setAttribute('download', `RxShield_Audit_Reports_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const handleOpenReportInDashboard = (item: AuditReportSummary) => {
+    const matchingPreset = samplePrescriptions.find((p) => p.id === item.id)
+    if (matchingPreset) {
+      setActiveRx(matchingPreset)
+    } else {
+      // Construct fallback rx data
+      const fallbackRx: PrescriptionData = {
+        ...samplePrescriptions[0],
+        id: item.id,
+        prescriptionNumber: item.prescriptionNumber,
+        date: item.date,
+        risk: item.risk,
+        overallConfidence: item.confidence,
+        riskScore: item.riskScore,
+      }
+      setActiveRx(fallbackRx)
+    }
+    navigate('dashboard')
+  }
+
+  const handleQuickPreviewCertificate = (item: AuditReportSummary) => {
+    const matchingPreset = samplePrescriptions.find((p) => p.id === item.id) || samplePrescriptions[0]
+    setSelectedRxForCert({
+      ...matchingPreset,
+      id: item.id,
+      prescriptionNumber: item.prescriptionNumber,
+      date: item.date,
+      risk: item.risk,
+      overallConfidence: item.confidence,
+      riskScore: item.riskScore,
+    })
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#040d1a' }}>
@@ -64,207 +101,283 @@ export default function Reports({ navigate }: Props) {
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Navbar navigate={navigate} current="reports" />
         <main style={{ flex: 1, padding: '36px 36px', overflowY: 'auto' }}>
+          <div style={{ maxWidth: 1280, margin: '0 auto' }}>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <h1 className="font-display" style={{ fontSize: 30, fontWeight: 800, color: '#e8f4fd', letterSpacing: '-0.02em', marginBottom: 6 }}>
-                Prescription Reports
-              </h1>
-              <p style={{ color: '#6b8fad', fontSize: 14 }}>
-                {filtered.length} record{filtered.length !== 1 ? 's' : ''} found
-              </p>
-            </div>
-            <button
-              onClick={() => alert('PDF export initiated')}
-              className="btn-outline"
-              style={{ padding: '9px 20px', borderRadius: 10, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}
-            >
-              ⬇ Download PDF Report
-            </button>
-          </div>
+            {/* Header & Controls */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
+              <div>
+                <h1 className="font-display" style={{ fontSize: 28, fontWeight: 800, color: '#e8f4fd', letterSpacing: '-0.02em', margin: '0 0 6px 0' }}>
+                  Prescription Forensic Audit History & Analytics
+                </h1>
+                <p style={{ color: '#6b8fad', fontSize: 14, margin: 0 }}>
+                  Permanent cryptographic log of scanned prescriptions, compliance verification scores, and fraud alerts.
+                </p>
+              </div>
 
-          {/* Filters */}
-          <div className="glass" style={{ borderRadius: 14, padding: '16px 20px', marginBottom: 20, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <input
-              type="text"
-              placeholder="Search by doctor, patient, medicine..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                flex: 1,
-                minWidth: 220,
-                padding: '9px 14px',
-                borderRadius: 9,
-                background: 'rgba(0,212,255,0.05)',
-                border: '1px solid rgba(0,212,255,0.15)',
-                color: '#e8f4fd',
-                fontSize: 14,
-                outline: 'none',
-              }}
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['all', 'valid', 'incomplete', 'suspicious'] as const).map((r) => (
+              <div style={{ display: 'flex', gap: 10 }}>
                 <button
-                  key={r}
-                  onClick={() => setFilterRisk(r)}
-                  style={{
-                    padding: '7px 14px',
-                    borderRadius: 8,
-                    border: `1px solid ${filterRisk === r ? (r === 'all' ? 'rgba(0,212,255,0.4)' : riskCfg[r]?.border || 'rgba(0,212,255,0.4)') : 'rgba(0,212,255,0.1)'}`,
-                    background: filterRisk === r ? (r === 'all' ? 'rgba(0,212,255,0.1)' : riskCfg[r]?.bg || 'rgba(0,212,255,0.1)') : 'transparent',
-                    color: filterRisk === r ? (r === 'all' ? '#00d4ff' : riskCfg[r]?.color || '#00d4ff') : '#6b8fad',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                    fontWeight: filterRisk === r ? 600 : 400,
-                    transition: 'all 0.2s',
-                    textTransform: 'capitalize',
-                  }}
+                  onClick={() => setShowCharts(!showCharts)}
+                  className="btn-outline"
+                  style={{ padding: '8px 14px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
-                  {r === 'all' ? 'All' : r}
+                  <span>{showCharts ? '📊 Hide Analytics' : '📊 Show Analytics'}</span>
                 </button>
-              ))}
+                <button
+                  onClick={exportCSV}
+                  className="btn-primary"
+                  style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <span>📥 Export CSV Log</span>
+                </button>
+              </div>
             </div>
-            <select
-              value={sortCol}
-              onChange={(e) => setSortCol(e.target.value as 'date' | 'confidence')}
+
+            {/* Visual Analytics KPI & Trends Section */}
+            {showCharts && <AnalyticsCharts reports={auditHistory} />}
+
+            {/* Search and Filters Bar */}
+            <div
+              className="glass"
               style={{
-                padding: '8px 14px',
-                borderRadius: 9,
-                background: 'rgba(0,212,255,0.05)',
+                borderRadius: 14,
+                padding: '16px 20px',
+                marginBottom: 20,
+                display: 'flex',
+                gap: 16,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                background: '#071428',
                 border: '1px solid rgba(0,212,255,0.15)',
-                color: '#a8c8e8',
-                fontSize: 13,
-                outline: 'none',
-                cursor: 'pointer',
               }}
             >
-              <option value="date">Sort: Date</option>
-              <option value="confidence">Sort: Confidence</option>
-            </select>
-          </div>
+              {/* Search input */}
+              <div style={{ flex: '1 1 240px', position: 'relative' }}>
+                <input
+                  type="text"
+                  placeholder="Search by Doctor, Patient, Rx ID, or Medication..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(0,212,255,0.2)',
+                    borderRadius: 8,
+                    padding: '8px 14px',
+                    color: '#e8f4fd',
+                    fontSize: 13,
+                    outline: 'none',
+                  }}
+                />
+              </div>
 
-          {/* Table */}
-          <div className="glass" style={{ borderRadius: 14, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid rgba(0,212,255,0.1)' }}>
-                  {['RX ID', 'Date', 'Doctor', 'Patient', 'Medicines', 'Confidence', 'Status', ''].map((h) => (
-                    <th
-                      key={h}
-                      style={{
-                        padding: '14px 16px',
-                        textAlign: 'left',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: '#6b8fad',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        whiteSpace: 'nowrap',
-                      }}
-                      className="font-mono"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((r, i) => {
-                  const cfg = riskCfg[r.risk]
+              {/* Risk Filter Buttons */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {(['all', 'valid', 'incomplete', 'suspicious'] as const).map((r) => {
+                  const active = filterRisk === r
+                  const label = r.charAt(0).toUpperCase() + r.slice(1)
                   return (
-                    <tr
-                      key={r.id}
+                    <button
+                      key={r}
+                      onClick={() => setFilterRisk(r)}
                       style={{
-                        borderBottom: i < filtered.length - 1 ? '1px solid rgba(0,212,255,0.06)' : 'none',
-                        transition: 'background 0.15s',
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        border: `1px solid ${active ? '#00d4ff' : 'rgba(255,255,255,0.1)'}`,
+                        background: active ? 'rgba(0,212,255,0.15)' : 'transparent',
+                        color: active ? '#00d4ff' : '#8bb0ce',
+                        fontSize: 12,
+                        fontWeight: active ? 700 : 500,
+                        cursor: 'pointer',
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,212,255,0.03)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
-                      <td style={{ padding: '14px 16px' }}>
-                        <span className="font-mono" style={{ fontSize: 13, color: '#00d4ff' }}>{r.id}</span>
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <span className="font-mono" style={{ fontSize: 13, color: '#a8c8e8' }}>{r.date}</span>
-                      </td>
-                      <td style={{ padding: '14px 16px', fontSize: 14, color: '#e8f4fd' }}>{r.doctor}</td>
-                      <td style={{ padding: '14px 16px', fontSize: 14, color: '#a8c8e8' }}>{r.patient}</td>
-                      <td style={{ padding: '14px 16px', maxWidth: 200 }}>
-                        <span style={{ fontSize: 13, color: '#6b8fad', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
-                          {r.medicines}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div
-                            style={{
-                              width: 60,
-                              height: 4,
-                              borderRadius: 999,
-                              background: 'rgba(0,212,255,0.1)',
-                              overflow: 'hidden',
-                            }}
-                          >
-                            <div
-                              style={{
-                                height: '100%',
-                                width: `${r.confidence}%`,
-                                background: cfg.color,
-                                borderRadius: 999,
-                              }}
-                            />
-                          </div>
-                          <span className="font-mono" style={{ fontSize: 12, color: cfg.color }}>{r.confidence}%</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <span
-                          style={{
-                            padding: '4px 10px',
-                            borderRadius: 6,
-                            background: cfg.bg,
-                            border: `1px solid ${cfg.border}`,
-                            color: cfg.color,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            textTransform: 'capitalize',
-                          }}
-                        >
-                          {cfg.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <button
-                          onClick={() => navigate('dashboard')}
-                          style={{
-                            background: 'none',
-                            border: '1px solid rgba(0,212,255,0.2)',
-                            borderRadius: 6,
-                            color: '#00d4ff',
-                            fontSize: 12,
-                            padding: '5px 12px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                          }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,212,255,0.1)' }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'none' }}
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
+                      {label}
+                    </button>
                   )
                 })}
-              </tbody>
-            </table>
-            {filtered.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b8fad' }}>
-                No records match your filters.
               </div>
-            )}
+
+              {/* Sort selector */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, color: '#6b8fad' }}>Sort:</span>
+                <select
+                  value={sortCol}
+                  onChange={(e) => setSortCol(e.target.value as any)}
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(0,212,255,0.2)',
+                    color: '#e8f4fd',
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                >
+                  <option value="date" style={{ background: '#071428' }}>Most Recent Date</option>
+                  <option value="confidence" style={{ background: '#071428' }}>Highest Confidence</option>
+                  <option value="riskScore" style={{ background: '#071428' }}>Highest Safety Score</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Audit Table */}
+            <div
+              className="glass"
+              style={{
+                borderRadius: 16,
+                overflow: 'hidden',
+                border: '1px solid rgba(0,212,255,0.15)',
+                background: '#071428',
+              }}
+            >
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, textAlign: 'left' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(0,212,255,0.05)', borderBottom: '1px solid rgba(0,212,255,0.15)', color: '#6b8fad' }}>
+                      <th style={{ padding: '12px 16px' }}>Rx ID / Date</th>
+                      <th style={{ padding: '12px 16px' }}>Prescribing Physician</th>
+                      <th style={{ padding: '12px 16px' }}>Patient Name</th>
+                      <th style={{ padding: '12px 16px' }}>Extracted Medication Orders</th>
+                      <th style={{ padding: '12px 16px' }}>Risk Verdict</th>
+                      <th style={{ padding: '12px 16px' }}>Safety Score</th>
+                      <th style={{ padding: '12px 16px' }}>Status</th>
+                      <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#6b8fad' }}>
+                          No audit records found matching your query.
+                        </td>
+                      </tr>
+                    ) : (
+                      filtered.map((item) => {
+                        const isSuspicious = item.risk === 'suspicious'
+                        const isIncomplete = item.risk === 'incomplete'
+                        const verdictColor = isSuspicious ? '#ff4444' : isIncomplete ? '#ffb800' : '#00ff88'
+
+                        return (
+                          <tr
+                            key={item.id}
+                            style={{
+                              borderBottom: '1px solid rgba(255,255,255,0.05)',
+                              transition: 'background 0.15s',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,212,255,0.03)')}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <td style={{ padding: '12px 16px' }}>
+                              <div style={{ fontWeight: 700, color: '#00d4ff', fontFamily: 'monospace' }}>{item.id}</div>
+                              <div style={{ fontSize: 11, color: '#6b8fad' }}>{item.date}</div>
+                            </td>
+                            <td style={{ padding: '12px 16px', color: '#e8f4fd', fontWeight: 600 }}>{item.doctor}</td>
+                            <td style={{ padding: '12px 16px', color: '#cbd5e1' }}>{item.patient}</td>
+                            <td style={{ padding: '12px 16px', color: '#8bb0ce', maxWidth: 260 }}>
+                              <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.medicines}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: '3px 8px',
+                                  borderRadius: 6,
+                                  background: `${verdictColor}15`,
+                                  border: `1px solid ${verdictColor}40`,
+                                  color: verdictColor,
+                                  textTransform: 'uppercase',
+                                }}
+                              >
+                                {item.risk}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <div style={{ fontWeight: 700, color: verdictColor }}>{item.riskScore}/100</div>
+                              <div style={{ fontSize: 10, color: '#6b8fad' }}>{item.confidence}% conf</div>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  color: item.status === 'verified_dispensed' ? '#00ff88' : item.status === 'rejected' ? '#ff4444' : '#ffb800',
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {item.status.replace('_', ' ').toUpperCase()}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                                <button
+                                  onClick={() => handleOpenReportInDashboard(item)}
+                                  style={{
+                                    background: 'rgba(0,212,255,0.1)',
+                                    border: '1px solid rgba(0,212,255,0.3)',
+                                    color: '#00d4ff',
+                                    padding: '4px 10px',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                  }}
+                                  title="Open in Verification Dashboard"
+                                >
+                                  Inspect
+                                </button>
+                                <button
+                                  onClick={() => handleQuickPreviewCertificate(item)}
+                                  style={{
+                                    background: 'rgba(255,255,255,0.06)',
+                                    border: '1px solid rgba(255,255,255,0.15)',
+                                    color: '#e8f4fd',
+                                    padding: '4px 8px',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    cursor: 'pointer',
+                                  }}
+                                  title="View Certificate"
+                                >
+                                  📜
+                                </button>
+                                <button
+                                  onClick={() => deleteReport(item.id)}
+                                  style={{
+                                    background: 'rgba(255,68,68,0.08)',
+                                    border: '1px solid rgba(255,68,68,0.25)',
+                                    color: '#ff4444',
+                                    padding: '4px 8px',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    cursor: 'pointer',
+                                  }}
+                                  title="Delete record"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
           </div>
         </main>
       </div>
+
+      {/* Quick Certificate Modal Preview */}
+      {selectedRxForCert && (
+        <AuditCertificateModal
+          isOpen={true}
+          onClose={() => setSelectedRxForCert(null)}
+          rxData={selectedRxForCert}
+        />
+      )}
     </div>
   )
 }

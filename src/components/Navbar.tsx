@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Page } from '../App'
+import RoleSelector from './RoleSelector'
 
 interface Props {
   navigate: (p: Page) => void
@@ -11,11 +12,11 @@ export default function Navbar({ navigate, current }: Props) {
 
   const links: { label: string; page: Page }[] = [
     { label: 'Home', page: 'landing' },
-    { label: 'Upload', page: 'upload' },
+    { label: 'Upload Rx', page: 'upload' },
     { label: 'Dashboard', page: 'dashboard' },
-    { label: 'About', page: 'about' },
-    { label: 'Help', page: 'help' },
-    { label: 'Contact', page: 'contact' },
+    { label: 'Audit Reports', page: 'reports' },
+    { label: 'Drug Database', page: 'medicine' },
+    { label: 'Admin Portal', page: 'admin' },
   ]
 
   return (
@@ -25,13 +26,14 @@ export default function Navbar({ navigate, current }: Props) {
     >
       <div
         style={{
-          maxWidth: 1280,
+          maxWidth: 1440,
           margin: '0 auto',
           padding: '0 24px',
-          height: 64,
+          height: 68,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          gap: 16,
         }}
       >
         {/* Logo */}
@@ -44,6 +46,7 @@ export default function Navbar({ navigate, current }: Props) {
             background: 'none',
             border: 'none',
             cursor: 'pointer',
+            flexShrink: 0,
           }}
         >
           <ShieldIcon />
@@ -66,10 +69,10 @@ export default function Navbar({ navigate, current }: Props) {
               style={{
                 background: 'none',
                 border: 'none',
-                padding: '6px 14px',
+                padding: '6px 12px',
                 borderRadius: 8,
                 cursor: 'pointer',
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 500,
                 color: current === l.page ? '#00d4ff' : '#a8c8e8',
                 transition: 'all 0.2s',
@@ -87,36 +90,19 @@ export default function Navbar({ navigate, current }: Props) {
           ))}
         </div>
 
-        {/* Right actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            onClick={() => navigate('login')}
-            className="btn-outline"
-            style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13 }}
-          >
-            Login
-          </button>
-          <button
-            onClick={() => navigate('register')}
-            className="btn-primary"
-            style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13 }}
-          >
-            Register
-          </button>
-          <button
-            onClick={() => navigate('admin')}
-            className="btn-outline"
-            style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13 }}
-          >
-            Admin
-          </button>
+        {/* Right Actions & Role Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <RoleSelector />
+
           <button
             onClick={() => navigate('upload')}
-            className="btn-primary nav-upload-btn"
-            style={{ padding: '8px 18px', borderRadius: 8, fontSize: 13 }}
+            className="btn-primary"
+            style={{ padding: '7px 16px', borderRadius: 8, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            Upload Rx
+            <span>⬆</span>
+            <span>Upload Scan</span>
           </button>
+
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
@@ -125,6 +111,7 @@ export default function Navbar({ navigate, current }: Props) {
               border: 'none',
               cursor: 'pointer',
               color: '#a8c8e8',
+              fontSize: 20,
             }}
             className="menu-btn"
           >
@@ -142,6 +129,7 @@ export default function Navbar({ navigate, current }: Props) {
             display: 'flex',
             flexDirection: 'column',
             gap: 4,
+            background: '#071428',
           }}
         >
           {links.map((l) => (
