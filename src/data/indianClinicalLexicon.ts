@@ -19,6 +19,48 @@ export interface ClinicalDrugEntry {
  * Covers Antibiotics, Analgesics, Antacids/PPIs, Cardiovascular, Antidiabetic, Respiratory & Antiallergic.
  */
 export const CLINICAL_LEXICON: ClinicalDrugEntry[] = [
+  // Cardiovascular, Gastrointestinal & Glaucoma (Riverside & Clinical Trials)
+  {
+    brandName: 'Betaloc',
+    genericName: 'Metoprolol Tartrate',
+    defaultDosage: '100mg',
+    commonDosages: ['25mg', '50mg', '100mg', '200mg'],
+    standardFrequency: '1 tab BID (Twice daily)',
+    schedule: 'Rx',
+    category: 'Selective Beta-1 Adrenergic Receptor Blocker / Antihypertensive',
+    aliases: ['betaloc', 'betaloc-100', 'metoprolol', 'lopressor', 'toprol', 'betaloc 100mg', 'betalok', 'betaloc100', 'shultersto'],
+  },
+  {
+    brandName: 'Dorzolamidum',
+    genericName: 'Dorzolamide Hydrochloride',
+    defaultDosage: '10mg',
+    commonDosages: ['10mg', '20mg', '2%', '5ml'],
+    standardFrequency: '1 tab / drop BID (Twice daily)',
+    schedule: 'Rx',
+    category: 'Carbonic Anhydrase Inhibitor / Glaucoma & Ocular Pressure',
+    aliases: ['dorzolamidum', 'dorzolamide', 'trusopt', 'dorzox', 'orzolamidum', 'dorzolam', 'orzolamid'],
+  },
+  {
+    brandName: 'Cimetidine',
+    genericName: 'Cimetidine',
+    defaultDosage: '50mg',
+    commonDosages: ['50mg', '200mg', '400mg', '800mg'],
+    standardFrequency: '2 tabs TID (Three times daily)',
+    schedule: 'Rx',
+    category: 'Histamine H2 Receptor Antagonist & CYP450 Inhibitor',
+    aliases: ['cimetidine', 'tagamet', 'cimetidin', 'cimetidine 50mg', 'cimet', 'cimetidne'],
+  },
+  {
+    brandName: 'Oxprelol',
+    genericName: 'Oxprenolol Hydrochloride',
+    defaultDosage: '50mg',
+    commonDosages: ['20mg', '40mg', '50mg', '80mg', '160mg'],
+    standardFrequency: '1 tab QD (Once daily)',
+    schedule: 'Rx',
+    category: 'Non-Selective Beta-Adrenergic Blocker / Antiarrhythmic',
+    aliases: ['oxprelol', 'oxprenolol', 'trasicor', 'oxprelol 50mg', 'oxprenol', 'oxprel'],
+  },
+
   // Herbal & Curcumin Formulations
   {
     brandName: 'Turmix',

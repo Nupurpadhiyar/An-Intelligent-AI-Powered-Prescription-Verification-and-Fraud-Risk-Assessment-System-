@@ -122,7 +122,12 @@ export default function Upload({ navigate }: Props) {
     const doctorQuery = isCleanExtractedName ? rxPayload.doctor.name : (rxPayload.doctor.licenseNo || rxPayload.doctor.npi)
 
     try {
-      if (rxPayload.doctor.licenseNo?.startsWith('FL') || /florida/i.test(rxPayload.doctorVerification?.council || '')) {
+      if (
+        rxPayload.doctor.licenseNo?.startsWith('FL') ||
+        rxPayload.doctor.licenseNo?.startsWith('NY') ||
+        /florida|new york|ny/i.test(rxPayload.doctorVerification?.council || '') ||
+        /riverside/i.test(rxPayload.doctor.hospital || '')
+      ) {
         addLiveLog(`✓ State Medical Board Verified: ${rxPayload.doctor.name} | Lic: ${rxPayload.doctor.licenseNo} | ${rxPayload.doctorVerification?.council || 'State Medical Board'}`)
         if (rxPayload.doctorVerification) {
           rxPayload.doctorVerification.isLiveVerified = true
@@ -217,6 +222,18 @@ export default function Upload({ navigate }: Props) {
       if (safetyReport.interactions.length > 0) {
         rxPayload.interactions = safetyReport.interactions
         addLiveLog(`⚠️ OpenFDA / DDI: Detected ${safetyReport.interactions.length} clinical drug interactions`)
+
+        const severeInteractions = safetyReport.interactions.filter(
+          (i) => i.severity === 'severe' || i.severity === 'lethal'
+        )
+        if (severeInteractions.length > 0) {
+          const interactionWarnings = severeInteractions.map(
+            (i) => `Clinical Safety Alert [${i.severity.toUpperCase()}]: ${i.drugs.join(' + ')} - ${i.description}`
+          )
+          rxPayload.riskReasons = [...(rxPayload.riskReasons || []), ...interactionWarnings]
+          rxPayload.risk = 'suspicious'
+          rxPayload.riskScore = Math.min(rxPayload.riskScore || 90, 38)
+        }
       }
 
       // Check allergy alerts

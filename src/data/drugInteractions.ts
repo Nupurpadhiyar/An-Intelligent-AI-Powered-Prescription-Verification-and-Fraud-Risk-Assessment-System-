@@ -44,6 +44,30 @@ export const knownInteractions: KnownInteraction[] = [
     description: 'Penicillins reduce renal clearance of Methotrexate, potentially leading to toxic accumulation.',
     recommendation: 'Monitor complete blood count and renal function closely.',
   },
+  {
+    pair: ['betaloc', 'oxprelol'],
+    severity: 'severe',
+    description: 'Duplicate Beta-Adrenergic Antagonist Therapy: Prescribing Betaloc (Metoprolol) concurrently with Oxprelol (Oxprenolol) causes profound bradycardia, AV nodal conduction block, and severe hypotensive collapse.',
+    recommendation: 'DO NOT DISPENSE dual beta-blockers without specialist cardiologist review. Discontinue one agent.',
+  },
+  {
+    pair: ['metoprolol', 'oxprenolol'],
+    severity: 'severe',
+    description: 'Duplicate Beta-Blocker Therapy: Co-administration of two oral beta-blockers causes excessive cardiac depression and severe hypotension.',
+    recommendation: 'Clinical intervention required: avoid concurrent prescribing of multiple beta-blockers.',
+  },
+  {
+    pair: ['cimetidine', 'betaloc'],
+    severity: 'moderate',
+    description: 'CYP2D6 & CYP3A4 Enzyme Inhibition: Cimetidine reduces hepatic first-pass clearance of Metoprolol, raising plasma concentrations by up to 70-80% and increasing risk of profound bradycardia.',
+    recommendation: 'Monitor heart rate and blood pressure closely, or substitute Cimetidine with Famotidine (non-CYP inhibitor).',
+  },
+  {
+    pair: ['cimetidine', 'oxprelol'],
+    severity: 'moderate',
+    description: 'CYP Inhibition: Cimetidine inhibits oxidative hepatic metabolism of Oxprenolol, potentiating beta-blocking adverse effects.',
+    recommendation: 'Consider switching H2-blocker to Famotidine or reduce Oxprelol dose.',
+  },
 ]
 
 export const dosageThresholds: Record<string, { maxSingle: number; maxDaily: number; unit: string; schedule: MedicineItem['schedule'] }> = {
@@ -61,6 +85,13 @@ export const dosageThresholds: Record<string, { maxSingle: number; maxDaily: num
   sertraline: { maxSingle: 200, maxDaily: 200, unit: 'mg', schedule: 'Rx' },
   levothyroxine: { maxSingle: 300, maxDaily: 300, unit: 'mcg', schedule: 'Rx' },
   omeprazole: { maxSingle: 40, maxDaily: 80, unit: 'mg', schedule: 'Rx' },
+  betaloc: { maxSingle: 100, maxDaily: 200, unit: 'mg', schedule: 'Rx' },
+  metoprolol: { maxSingle: 100, maxDaily: 200, unit: 'mg', schedule: 'Rx' },
+  oxprelol: { maxSingle: 80, maxDaily: 160, unit: 'mg', schedule: 'Rx' },
+  oxprenolol: { maxSingle: 80, maxDaily: 160, unit: 'mg', schedule: 'Rx' },
+  cimetidine: { maxSingle: 400, maxDaily: 1600, unit: 'mg', schedule: 'Rx' },
+  dorzolamidum: { maxSingle: 20, maxDaily: 40, unit: 'mg', schedule: 'Rx' },
+  dorzolamide: { maxSingle: 20, maxDaily: 40, unit: 'mg', schedule: 'Rx' },
 }
 
 export function checkInteractions(medications: string[], patientMedications: string[] = []): DrugInteractionAlert[] {
