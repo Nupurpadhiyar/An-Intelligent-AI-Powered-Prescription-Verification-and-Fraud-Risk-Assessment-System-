@@ -34,6 +34,14 @@ export default defineConfig(({ mode }) => {
       port: parseInt(process.env.PORT || '8443'),
       strictPort: true,
       watch: { ignored: ['**/.figma/**'] },
+      proxy: {
+        '/nppes-proxy': {
+          target: 'https://npiregistry.cms.hhs.gov',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (p) => p.replace(/^\/nppes-proxy/, '/api'),
+        },
+      },
     },
     preview: {
       host: '0.0.0.0',

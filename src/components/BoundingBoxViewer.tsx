@@ -172,7 +172,7 @@ export default function BoundingBoxViewer({ rxData }: BoundingBoxViewerProps) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingLeft: 12 }}>
                 {rxData.medicines.map((med, idx) => (
                   <div key={idx} style={{ borderBottom: '1px dashed #cbd5e1', paddingBottom: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
                         {med.name}
                       </span>
@@ -182,6 +182,11 @@ export default function BoundingBoxViewer({ rxData }: BoundingBoxViewerProps) {
                       <span style={{ fontSize: 12, color: '#475569' }}>
                         Qty: {med.quantity}
                       </span>
+                      {med.isHandwrittenMatch && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#d97706', background: '#fef3c7', padding: '1px 6px', borderRadius: 4 }}>
+                          ✍️ Decoded Handwriting
+                        </span>
+                      )}
                       {med.schedule && med.schedule !== 'OTC' && (
                         <span
                           style={{
@@ -197,6 +202,11 @@ export default function BoundingBoxViewer({ rxData }: BoundingBoxViewerProps) {
                         </span>
                       )}
                     </div>
+                    {med.matchedGeneric && (
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                        Generic: {med.matchedGeneric}
+                      </div>
+                    )}
                     <div style={{ fontSize: 12, color: '#475569', marginTop: 3 }}>
                       Sig: {med.frequency} • Duration: {med.duration}
                     </div>

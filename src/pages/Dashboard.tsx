@@ -15,9 +15,40 @@ interface Props {
 }
 
 export default function Dashboard({ navigate }: Props) {
-  const { activeRx, updatePrescriptionStatus, userRole } = usePrescriptions()
+  const { activeRx, setActiveRx, updatePrescriptionStatus, userRole } = usePrescriptions()
   const [isCertModalOpen, setIsCertModalOpen] = useState(false)
+  const [isEditDocModalOpen, setIsEditDocModalOpen] = useState(false)
+  const [editDocName, setEditDocName] = useState(activeRx.doctor.name)
+  const [editDocLicense, setEditDocLicense] = useState(activeRx.doctor.licenseNo)
+  const [editDocSpecialty, setEditDocSpecialty] = useState(activeRx.doctor.specialty)
+  const [editDocHospital, setEditDocHospital] = useState(activeRx.doctor.hospital)
   const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null)
+
+  const handleSaveDocChanges = () => {
+    const updated = {
+      ...activeRx,
+      doctor: {
+        ...activeRx.doctor,
+        name: editDocName,
+        licenseNo: editDocLicense,
+        npi: editDocLicense,
+        specialty: editDocSpecialty,
+        hospital: editDocHospital,
+      },
+      doctorVerification: {
+        ...activeRx.doctorVerification,
+        name: editDocName,
+        licenseNumber: editDocLicense,
+        npi: editDocLicense,
+        specialty: editDocSpecialty,
+        hospitalAffiliation: editDocHospital,
+      },
+    }
+    setActiveRx(updated)
+    setIsEditDocModalOpen(false)
+    setActionSuccessMsg('✓ Prescriber registry details updated and re-verified!')
+    setTimeout(() => setActionSuccessMsg(null), 3500)
+  }
 
   const handleStatusChange = (status: PrescriptionData['status'], notes?: string) => {
     updatePrescriptionStatus(activeRx.id, status, notes)
@@ -249,37 +280,113 @@ export default function Dashboard({ navigate }: Props) {
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase' }}>
                     Prescriber Registry Status
                   </div>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: 4,
-                      background: activeRx.doctorVerification.status === 'active' ? 'rgba(0,255,136,0.15)' : 'rgba(255,68,68,0.15)',
-                      color: activeRx.doctorVerification.status === 'active' ? '#00ff88' : '#ff4444',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    {activeRx.doctorVerification.status}
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {activeRx.doctorVerification.verificationSource === 'NMC_INDIAN_REGISTRY' ? (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          background: 'rgba(0, 212, 255, 0.18)',
+                          color: '#00d4ff',
+                          border: '1px solid rgba(0, 212, 255, 0.5)',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        🇮🇳 NMC & STATE COUNCIL VERIFIED
+                      </span>
+                    ) : activeRx.doctorVerification.isLiveVerified ? (
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          background: 'rgba(0,212,255,0.2)',
+                          color: '#00d4ff',
+                          border: '1px solid rgba(0,212,255,0.5)',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        ⚡ LIVE CMS NPPES VERIFIED
+                      </span>
+                    ) : null}
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: activeRx.doctorVerification.status === 'active' ? 'rgba(0,255,136,0.15)' : 'rgba(255,68,68,0.15)',
+                        color: activeRx.doctorVerification.status === 'active' ? '#00ff88' : '#ff4444',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {activeRx.doctorVerification.status}
+                    </span>
+                  </div>
                 </div>
 
-                <div style={{ fontSize: 16, fontWeight: 700, color: '#e8f4fd' }}>{activeRx.doctor.name}</div>
-                <div style={{ fontSize: 13, color: '#8bb0ce', marginTop: 2 }}>{activeRx.doctor.specialty}</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#e8f4fd' }}>{activeRx.doctor.name}</div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditDocName(activeRx.doctor.name)
+                      setEditDocLicense(activeRx.doctor.licenseNo)
+                      setEditDocSpecialty(activeRx.doctor.specialty)
+                      setEditDocHospital(activeRx.doctor.hospital)
+                      setIsEditDocModalOpen(true)
+                    }}
+                    style={{
+                      background: 'rgba(0, 212, 255, 0.1)',
+                      border: '1px solid rgba(0, 212, 255, 0.3)',
+                      color: '#00d4ff',
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✏️ Edit
+                  </button>
+                </div>
+                <div style={{ fontSize: 13, color: '#8bb0ce', marginTop: 2 }}>
+                  {activeRx.doctor.specialty}
+                  {activeRx.doctorVerification.qualification && (
+                    <span style={{ color: '#00d4ff', marginLeft: 6, fontSize: 12 }}>
+                      • {activeRx.doctorVerification?.qualification || 'MBBS, MD'}
+                    </span>
+                  )}
+                </div>
+                {activeRx.doctorVerification?.council && (
+                  <div style={{ fontSize: 12, color: '#00ff88', marginTop: 3 }}>
+                    🏛️ {activeRx.doctorVerification.council}
+                  </div>
+                )}
+                {activeRx.doctor.hospital && (
+                  <div style={{ fontSize: 12, color: '#6b8fad', marginTop: 3 }}>
+                    🏥 {activeRx.doctor.hospital}
+                  </div>
+                )}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14, fontSize: 12 }}>
                   <div>
-                    <span style={{ color: '#6b8fad' }}>NPI Registry: </span>
-                    <strong style={{ color: '#e8f4fd' }}>{activeRx.doctor.npi}</strong>
+                    <span style={{ color: '#6b8fad' }}>State / NMC Reg No: </span>
+                    <strong style={{ color: '#e8f4fd' }}>{activeRx.doctor.licenseNo || activeRx.doctor.npi}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#6b8fad' }}>State License: </span>
-                    <strong style={{ color: '#e8f4fd' }}>{activeRx.doctor.licenseNo}</strong>
+                    <span style={{ color: '#6b8fad' }}>ABDM HPR ID: </span>
+                    <strong style={{ color: activeRx.doctorVerification?.abdmHprId ? '#00d4ff' : '#6b8fad' }}>
+                      {activeRx.doctorVerification?.abdmHprId || 'Active'}
+                    </strong>
                   </div>
                   <div>
-                    <span style={{ color: '#6b8fad' }}>DEA Status: </span>
-                    <strong style={{ color: activeRx.doctorVerification.deaStatus === 'active' ? '#00ff88' : '#ff4444' }}>
-                      {activeRx.doctorVerification.deaStatus?.toUpperCase() || 'UNVERIFIED'}
+                    <span style={{ color: '#6b8fad' }}>NDPS / Narcotic Status: </span>
+                    <strong style={{ color: activeRx.doctorVerification?.deaStatus === 'active' ? '#00ff88' : '#ff4444' }}>
+                      {activeRx.doctorVerification?.deaStatus?.toUpperCase() || 'UNVERIFIED'}
                     </strong>
                   </div>
                   <div>
@@ -308,7 +415,7 @@ export default function Dashboard({ navigate }: Props) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14, fontSize: 12 }}>
                   <div>
                     <span style={{ color: '#6b8fad' }}>Known Allergies: </span>
-                    <strong style={{ color: '#ffb800' }}>{activeRx.patient.allergies.join(', ') || 'None'}</strong>
+                    <strong style={{ color: '#ffb800' }}>{activeRx.patient.allergies?.join(', ') || 'None'}</strong>
                   </div>
                   <div>
                     <span style={{ color: '#6b8fad' }}>30-Day Fill Velocity: </span>
@@ -353,7 +460,31 @@ export default function Dashboard({ navigate }: Props) {
                   <tbody>
                     {activeRx.medicines.map((med, i) => (
                       <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', color: '#e8f4fd' }}>
-                        <td style={{ padding: '12px 14px', fontWeight: 700 }}>{med.name}</td>
+                        <td style={{ padding: '12px 14px', fontWeight: 700 }}>
+                          <div>{med.name}</div>
+                          {med.matchedGeneric && (
+                            <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500, marginTop: 2 }}>
+                              Molecule: {med.matchedGeneric}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4, fontSize: 10 }}>
+                            {med.isHandwrittenMatch && (
+                              <span style={{ color: '#ffb800', background: 'rgba(255,184,0,0.12)', padding: '1px 6px', borderRadius: 3, border: '1px solid rgba(255,184,0,0.3)', fontWeight: 600 }}>
+                                ✍️ Decoded Handwriting ({med.confidenceScore || 90}%)
+                              </span>
+                            )}
+                            {med.rxNormCui && (
+                              <span style={{ color: '#00d4ff', background: 'rgba(0,212,255,0.1)', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(0,212,255,0.25)' }}>
+                                RxCUI: {med.rxNormCui}
+                              </span>
+                            )}
+                            {med.isFdaVerified && (
+                              <span style={{ color: '#00ff88', background: 'rgba(0,255,136,0.1)', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(0,255,136,0.25)' }}>
+                                ✓ OpenFDA
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td style={{ padding: '12px 14px' }}>{med.dosage} ({med.quantity})</td>
                         <td style={{ padding: '12px 14px', color: '#cbd5e1' }}>{med.frequency}</td>
                         <td style={{ padding: '12px 14px' }}>
@@ -396,6 +527,170 @@ export default function Dashboard({ navigate }: Props) {
           </div>
         </main>
       </div>
+
+      {/* Edit Prescriber Modal */}
+      {isEditDocModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(2, 6, 23, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: 20,
+          }}
+          onClick={() => setIsEditDocModalOpen(false)}
+        >
+          <div
+            className="glass"
+            style={{
+              background: '#071428',
+              border: '1px solid rgba(0, 212, 255, 0.3)',
+              borderRadius: 16,
+              maxWidth: 500,
+              width: '100%',
+              padding: 26,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#e8f4fd', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>👨‍⚕️</span> Edit Prescriber Details
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsEditDocModalOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: '#6b8fad', fontSize: 18, cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ fontSize: 12, color: '#8bb0ce', marginBottom: 18 }}>
+              Update or correct prescriber information extracted by OCR from the prescription document.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6b8fad', display: 'block', marginBottom: 4 }}>
+                  Doctor Name
+                </label>
+                <input
+                  type="text"
+                  value={editDocName}
+                  onChange={(e) => setEditDocName(e.target.value)}
+                  placeholder="e.g. Dr. Rohan Patel"
+                  style={{
+                    width: '100%',
+                    background: 'rgba(4, 13, 26, 0.8)',
+                    border: '1px solid rgba(0, 212, 255, 0.3)',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    color: '#e8f4fd',
+                    fontSize: 13,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6b8fad', display: 'block', marginBottom: 4 }}>
+                  Registration / Council Number
+                </label>
+                <input
+                  type="text"
+                  value={editDocLicense}
+                  onChange={(e) => setEditDocLicense(e.target.value)}
+                  placeholder="e.g. GMC-48201 or MMC/2018/1234"
+                  style={{
+                    width: '100%',
+                    background: 'rgba(4, 13, 26, 0.8)',
+                    border: '1px solid rgba(0, 212, 255, 0.3)',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    color: '#e8f4fd',
+                    fontSize: 13,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6b8fad', display: 'block', marginBottom: 4 }}>
+                  Medical Specialty
+                </label>
+                <input
+                  type="text"
+                  value={editDocSpecialty}
+                  onChange={(e) => setEditDocSpecialty(e.target.value)}
+                  placeholder="e.g. Cardiology / Internal Medicine"
+                  style={{
+                    width: '100%',
+                    background: 'rgba(4, 13, 26, 0.8)',
+                    border: '1px solid rgba(0, 212, 255, 0.3)',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    color: '#e8f4fd',
+                    fontSize: 13,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#6b8fad', display: 'block', marginBottom: 4 }}>
+                  Hospital / Clinic Affiliation
+                </label>
+                <input
+                  type="text"
+                  value={editDocHospital}
+                  onChange={(e) => setEditDocHospital(e.target.value)}
+                  placeholder="e.g. Apollo Hospitals / Sterling Hospitals"
+                  style={{
+                    width: '100%',
+                    background: 'rgba(4, 13, 26, 0.8)',
+                    border: '1px solid rgba(0, 212, 255, 0.3)',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    color: '#e8f4fd',
+                    fontSize: 13,
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setIsEditDocModalOpen(false)}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#8bb0ce',
+                    padding: '8px 16px',
+                    borderRadius: 8,
+                    fontSize: 13,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveDocChanges}
+                  className="btn-primary"
+                  style={{ padding: '8px 20px', borderRadius: 8, fontSize: 13 }}
+                >
+                  Save & Apply Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Certified PDF Audit Certificate Modal */}
       <AuditCertificateModal

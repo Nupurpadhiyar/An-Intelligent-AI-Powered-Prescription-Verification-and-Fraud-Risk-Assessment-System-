@@ -8,11 +8,19 @@ export interface MedicineItem {
   frequency: string
   duration: string
   quantity: string
-  schedule?: 'OTC' | 'Rx' | 'Schedule II' | 'Schedule III' | 'Schedule IV'
+  schedule?: 'OTC' | 'Rx' | 'Schedule II' | 'Schedule III' | 'Schedule IV' | 'Schedule H' | 'Schedule H1' | 'Schedule X'
   risk?: DrugRiskLevel
   riskNotes?: string
   maxDailyDose?: string
   prescribedDailyDose?: string
+  rxNormCui?: string
+  fdaGenericName?: string
+  fdaBoxedWarning?: string
+  isFdaVerified?: boolean
+  isHandwrittenMatch?: boolean
+  matchedGeneric?: string
+  confidenceScore?: number
+  rawOcrSnippet?: string
 }
 
 export interface DrugInteractionAlert {
@@ -23,17 +31,24 @@ export interface DrugInteractionAlert {
 }
 
 export interface DoctorRegistryRecord {
-  npi: string
+  npi: string // Also serves as Indian NMC/State Registration Number
   name: string
   specialty: string
   licenseNumber: string
   state: string
   status: 'active' | 'suspended' | 'expired' | 'revoked' | 'unverified'
   hospitalAffiliation: string
+  council?: string // e.g. Gujarat Medical Council (GMC), Delhi Medical Council (DMC), NMC
+  qualification?: string // e.g. MBBS, MD (General Medicine)
+  abdmHprId?: string // Ayushman Bharat Digital Mission Healthcare Professional ID
+  ndpsLicense?: string // Indian NDPS Act license for Schedule X / narcotics
   deaNumber?: string
   deaStatus?: 'active' | 'suspended' | 'not_found'
   phone: string
   address: string
+  verificationSource?: 'LIVE_CMS_NPPES' | 'OFFLINE_CACHE' | 'REGISTRY_FALLBACK' | 'NMC_INDIAN_REGISTRY'
+  isLiveVerified?: boolean
+  lastVerifiedAt?: string
 }
 
 export interface RiskFactor {

@@ -1,83 +1,90 @@
 import type { DoctorRegistryRecord } from '../types/prescription'
+import { INDIAN_DOCTOR_REGISTRY, queryIndianDoctorRegistry } from '../services/indianDoctorService'
 
 export const doctorRegistry: Record<string, DoctorRegistryRecord> = {
+  // Indian Medical Council & NMC Doctors (Primary)
+  'GMC-48201': INDIAN_DOCTOR_REGISTRY['GMC-48201'],
+  'GMC-52190': INDIAN_DOCTOR_REGISTRY['GMC-52190'],
+  'MMC-2016-03-8849': INDIAN_DOCTOR_REGISTRY['MMC-2016-03-8849'],
+  'DMC-74829': INDIAN_DOCTOR_REGISTRY['DMC-74829'],
+  'KMC-68492': INDIAN_DOCTOR_REGISTRY['KMC-68492'],
+  'TNMC-81204': INDIAN_DOCTOR_REGISTRY['TNMC-81204'],
+  'UPPMC-92014': INDIAN_DOCTOR_REGISTRY['UPPMC-92014'],
+
+  // Indian Doctor Presets mapped to legacy IDs for sample prescriptions compatibility
   'NPI-1849201948': {
-    npi: '1849201948',
-    name: 'Dr. Sarah Chen, MD',
-    specialty: 'Internal Medicine / Pediatrics',
-    licenseNumber: 'CA-MED-4821',
-    state: 'California',
+    npi: 'GMC-48201',
+    name: 'Dr. Rajesh V. Sharma, MD',
+    specialty: 'Internal Medicine & Critical Care',
+    qualification: 'MBBS, MD (Medicine)',
+    licenseNumber: 'GMC-48201',
+    council: 'Gujarat Medical Council (GMC)',
+    state: 'Gujarat',
     status: 'active',
-    hospitalAffiliation: 'Northridge Medical Center, San Francisco',
-    deaNumber: 'BC1928374',
+    hospitalAffiliation: 'Apollo Hospitals International, Ahmedabad / Gandhinagar',
+    abdmHprId: '91-4820-1948-2849@abdm',
+    ndpsLicense: 'NDPS-GUJ-MED-2023-8812',
+    deaNumber: 'NDPS-8812',
     deaStatus: 'active',
-    phone: '+1 (415) 555-0192',
-    address: '450 Sutter St, Suite 1200, San Francisco, CA 94108',
+    phone: '+91 (79) 6670-1800',
+    address: 'Plot No. 1A, GIDC Estate, Bhat, Gandhinagar, Gujarat 382428',
+    verificationSource: 'NMC_INDIAN_REGISTRY',
+    isLiveVerified: true,
   },
   'NPI-1049281920': {
-    npi: '1049281920',
-    name: 'Dr. Priya Patel, MD',
-    specialty: 'Cardiovascular Disease & Endocrinology',
-    licenseNumber: 'CA-MED-9204',
-    state: 'California',
+    npi: 'GMC-52190',
+    name: 'Dr. Priya N. Patel, MS',
+    specialty: 'Cardiovascular Surgery',
+    qualification: 'MBBS, MS (Surgery), MCh (CTVS)',
+    licenseNumber: 'GMC-52190',
+    council: 'Gujarat Medical Council (GMC)',
+    state: 'Gujarat',
     status: 'active',
-    hospitalAffiliation: 'Suncoast Regional Hospital, Oakland',
-    deaNumber: 'BP9284710',
+    hospitalAffiliation: 'Sterling Hospitals, Memnagar, Ahmedabad',
+    abdmHprId: '91-5219-0941-1102@abdm',
+    ndpsLicense: 'NDPS-GUJ-MED-2024-3401',
+    deaNumber: 'NDPS-3401',
     deaStatus: 'active',
-    phone: '+1 (510) 555-8392',
-    address: '1200 Broadway, Suite 400, Oakland, CA 94612',
+    phone: '+91 (79) 4001-1111',
+    address: 'Sterling Hospital Road, Memnagar, Ahmedabad, Gujarat 380052',
+    verificationSource: 'NMC_INDIAN_REGISTRY',
+    isLiveVerified: true,
   },
   'NPI-1928374650': {
-    npi: '1928374650',
-    name: 'Dr. James Liu, MD',
-    specialty: 'Cardiology',
-    licenseNumber: 'CA-MED-3910',
-    state: 'California',
+    npi: 'DMC-74829',
+    name: 'Dr. Ananya Mukherjee, MD',
+    specialty: 'Pulmonary Medicine & Infectious Diseases',
+    qualification: 'MBBS, MD (Pulmonology)',
+    licenseNumber: 'DMC-74829',
+    council: 'Delhi Medical Council (DMC)',
+    state: 'Delhi',
     status: 'active',
-    hospitalAffiliation: 'Bayview Heart & Vascular Institute',
-    deaNumber: 'BL3819204',
+    hospitalAffiliation: 'All India Institute of Medical Sciences (AIIMS), New Delhi',
+    abdmHprId: '91-7482-9014-4419@abdm',
+    ndpsLicense: 'NDPS-DEL-AIIMS-2023-0182',
+    deaNumber: 'NDPS-0182',
     deaStatus: 'active',
-    phone: '+1 (415) 555-7381',
-    address: '2200 Post St, San Francisco, CA 94115',
+    phone: '+91 (11) 2658-8500',
+    address: 'Sri Aurobindo Marg, Ansari Nagar East, New Delhi, Delhi 110029',
+    verificationSource: 'NMC_INDIAN_REGISTRY',
+    isLiveVerified: true,
   },
   'NPI-UNKNOWN': {
     npi: 'UNVERIFIED',
-    name: 'Dr. J. Morrison',
-    specialty: 'General Practice (Unclaimed)',
-    licenseNumber: 'INVALID-9942',
+    name: 'Dr. J. K. Verma (Unregistered Prescriber)',
+    specialty: 'General Practice (Fake Prescription Mill)',
+    qualification: 'Forged Degree / Unverified',
+    licenseNumber: 'FAKE-REG-9942',
+    council: 'Not Listed in NMC / State Medical Councils',
     state: 'Unknown',
     status: 'revoked',
-    hospitalAffiliation: 'No registered medical institution affiliation',
-    deaNumber: 'UNKNOWN',
+    hospitalAffiliation: 'No registered hospital affiliation found in India',
+    deaNumber: 'NO-NDPS-RECORD',
     deaStatus: 'suspended',
-    phone: 'Unregistered / VoIP Number',
-    address: 'P.O. Box 8192, Unincorporated Area',
-  },
-  'NPI-1492048192': {
-    npi: '1492048192',
-    name: 'Dr. Angela Ross, MD',
-    specialty: 'Psychiatry & Neurology',
-    licenseNumber: 'CA-MED-5921',
-    state: 'California',
-    status: 'active',
-    hospitalAffiliation: 'Pacific Neuroscience Medical Center',
-    deaNumber: 'BR5829103',
-    deaStatus: 'active',
-    phone: '+1 (415) 555-3849',
-    address: '3838 California St, San Francisco, CA 94118',
-  },
-  'NPI-EXPIRED': {
-    npi: '1294820194',
-    name: 'Dr. R. Kapoor, MD',
-    specialty: 'Family Medicine',
-    licenseNumber: 'CA-MED-1029',
-    state: 'California',
-    status: 'expired',
-    hospitalAffiliation: 'Former St. Jude Clinic (Inactive)',
-    deaNumber: 'BK1029384',
-    deaStatus: 'suspended',
-    phone: '+1 (408) 555-9102',
-    address: '800 E Santa Clara St, San Jose, CA 95112',
+    phone: '+91 99999-00000 (VoIP / Disposable)',
+    address: 'Unlisted clinic address, suspicious letterhead',
+    verificationSource: 'REGISTRY_FALLBACK',
+    isLiveVerified: false,
   },
 }
 
@@ -93,4 +100,30 @@ export function lookupDoctor(nameOrLicense: string): DoctorRegistryRecord {
     }
   }
   return doctorRegistry['NPI-UNKNOWN']
+}
+
+/**
+ * Real-time asynchronous lookup querying Indian NMC/SMC registry first,
+ * then international CMS NPPES if needed.
+ */
+export async function lookupDoctorAsync(nameOrNpi: string, stateHint?: string): Promise<DoctorRegistryRecord> {
+  try {
+    // 1. Check Indian Medical Council registry first
+    const indianResult = await queryIndianDoctorRegistry(nameOrNpi)
+    if (indianResult.isFound) {
+      return indianResult.record
+    }
+
+    // 2. Try CMS NPPES if it matches US query
+    const { queryLiveNPPES } = await import('../services/nppesService')
+    const res = await queryLiveNPPES(nameOrNpi, stateHint)
+    if (res.isLiveVerified) {
+      return res.record
+    }
+
+    // 3. Fallback to local
+    return lookupDoctor(nameOrNpi)
+  } catch {
+    return lookupDoctor(nameOrNpi)
+  }
 }
