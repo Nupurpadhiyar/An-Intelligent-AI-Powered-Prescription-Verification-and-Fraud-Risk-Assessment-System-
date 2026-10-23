@@ -801,7 +801,7 @@ export async function performRealOcrOnImage(
       tamperConfidence: Math.max(1, 100 - confidence),
       risk: 'valid',
       overallConfidence: confidence,
-      riskScore: Math.min(98, Math.max(65, confidence)),
+      riskScore: parsed.riskScore,
       riskReasons: [],
       riskFactors: [
         {
@@ -809,7 +809,7 @@ export async function performRealOcrOnImage(
           title: 'Prescriber Medical Council License',
           score: 95,
           status: 'pass',
-          details: `Prescriber: ${parsed.doctor.name} | Reg: ${parsed.doctor.licenseNo}`,
+          details: `Prescriber: ${parsed.doctor.name} | Reg: ${parsed.doctor.licenseNo} | ${parsed.doctorVerification.council}`,
         },
         {
           category: 'tamper',
@@ -823,7 +823,7 @@ export async function performRealOcrOnImage(
           title: 'Prescription Schedule Class',
           score: parsed.medicines.some((m) => m.schedule === 'Schedule II') ? 15 : 95,
           status: parsed.medicines.some((m) => m.schedule === 'Schedule II') ? 'fail' : 'pass',
-          details: `${parsed.medicines.length} medicine items extracted from image`,
+          details: `${parsed.medicines.length} medicine items extracted: ${parsed.medicines.map((m) => m.name).join(', ')}`,
         },
         {
           category: 'clinical',
@@ -837,35 +837,12 @@ export async function performRealOcrOnImage(
           title: 'Dispensing Velocity History',
           score: 95,
           status: 'pass',
-          details: 'Patient record active; single dispensing event.',
+          details: `Patient: ${parsed.patient.name} | Single dispensing event.`,
         },
       ],
       interactions: [],
-      doctorVerification: {
-        npi: parsed.doctor.licenseNo,
-        name: parsed.doctor.name,
-        specialty: parsed.doctor.specialty,
-        qualification: 'MBBS, MD',
-        council: parsed.doctor.licenseNo.startsWith('GMC')
-          ? 'Gujarat Medical Council (GMC)'
-          : parsed.doctor.licenseNo.startsWith('MMC')
-          ? 'Maharashtra Medical Council (MMC)'
-          : parsed.doctor.licenseNo.startsWith('DMC')
-          ? 'Delhi Medical Council (DMC)'
-          : 'National Medical Commission (NMC / State Council)',
-        licenseNumber: parsed.doctor.licenseNo,
-        state: 'National / State Council',
-        status: 'active',
-        hospitalAffiliation: parsed.hospitalName,
-        phone: parsed.doctor.phone,
-        address: 'Practicing Clinical Healthcare Facility',
-        abdmHprId: `91-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}@abdm`,
-        ndpsLicense: `NDPS-REG-2024-${Math.floor(1000 + Math.random() * 9000)}`,
-        deaStatus: 'active',
-        verificationSource: 'NMC_INDIAN_REGISTRY',
-        isLiveVerified: true,
-        lastVerifiedAt: new Date().toISOString(),
-      },
+      // Use the fully built doctorVerification from parsePrescriptionText (includes MCH council, Uday Hospital, BHMS qualifications, etc.)
+      doctorVerification: parsed.doctorVerification,
       boundingBoxes: parsed.boundingBoxes,
       sourceType: 'uploaded_file',
       status: 'pending_review',
