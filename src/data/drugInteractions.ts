@@ -96,12 +96,24 @@ export const dosageThresholds: Record<string, { maxSingle: number; maxDaily: num
 
 export function checkInteractions(medications: string[], patientMedications: string[] = []): DrugInteractionAlert[] {
   const allDrugs = [...medications, ...patientMedications].map((d) => d.toLowerCase().trim())
+  const expandedDrugs = new Set(allDrugs)
+
+  for (const d of allDrugs) {
+    if (d.includes('restyl') || d.includes('xanax') || d.includes('alprax') || d.includes('trika')) expandedDrugs.add('alprazolam')
+    if (d.includes('betaloc') || d.includes('lopressor') || d.includes('toprol')) { expandedDrugs.add('metoprolol'); expandedDrugs.add('betaloc'); }
+    if (d.includes('oxprelol') || d.includes('trasicor')) { expandedDrugs.add('oxprenolol'); expandedDrugs.add('oxprelol'); }
+    if (d.includes('tagamet')) expandedDrugs.add('cimetidine')
+    if (d.includes('trusopt') || d.includes('dorzox') || d.includes('orzolamidum') || d.includes('dorzolamidum')) expandedDrugs.add('dorzolamide')
+    if (d.includes('percocet') || d.includes('oxycontin') || d.includes('roxicodone') || d.includes('oxycodone')) expandedDrugs.add('oxycodone')
+  }
+
+  const drugList = Array.from(expandedDrugs)
   const alerts: DrugInteractionAlert[] = []
 
   for (const rule of knownInteractions) {
     const [d1, d2] = rule.pair
-    const hasD1 = allDrugs.some((item) => item.includes(d1))
-    const hasD2 = allDrugs.some((item) => item.includes(d2))
+    const hasD1 = drugList.some((item) => item.includes(d1))
+    const hasD2 = drugList.some((item) => item.includes(d2))
 
     if (hasD1 && hasD2) {
       alerts.push({

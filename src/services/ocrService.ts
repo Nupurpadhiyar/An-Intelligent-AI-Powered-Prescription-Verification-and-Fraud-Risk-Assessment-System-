@@ -418,6 +418,7 @@ export function parsePrescriptionText(
     cleanMedLine = cleanMedLine
       .replace(/\bS[O0]\s*(?:my|mg)\b/gi, '50mg')
       .replace(/\bl0\s*(?:my|mg)\b/gi, '10mg')
+      .replace(/\b[Il|]\s*mg\b/gi, '1mg')
       .replace(/\b(\d+)\s*my\b/gi, '$1mg')
 
     // Check if line contains a dosage pattern (e.g. 500mg, 400 mg, 80mg, 20 mg, 0.5mg, 5ml)

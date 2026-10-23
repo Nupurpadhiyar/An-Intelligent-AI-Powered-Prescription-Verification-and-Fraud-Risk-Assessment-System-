@@ -126,7 +126,11 @@ export async function evaluatePrescriptionClinicalSafety(
   const analyzedDrugs: LiveDrugAnalysisResult[] = []
   const allergyAlerts: string[] = []
   const dosageAlerts: string[] = []
-  const combinedDrugNames = medicines.map((m) => m.name.toLowerCase().trim())
+  const combinedDrugNames = medicines.flatMap((m) => [
+    m.name.toLowerCase().trim(),
+    (m.matchedGeneric || '').toLowerCase().trim(),
+    (m.fdaGenericName || '').toLowerCase().trim(),
+  ]).filter(Boolean)
 
   // Run live OpenFDA and RxNorm queries concurrently for all medicines
   const promises = medicines.map(async (med) => {
